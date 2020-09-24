@@ -10,6 +10,7 @@ namespace Adventure
             Console.WriteLine("David är här!");
             Console.WriteLine("Elias är här!");
             Console.WriteLine("Elias är här!");
+            Console.WriteLine("Dylan är här!");
         }
     }
 }
