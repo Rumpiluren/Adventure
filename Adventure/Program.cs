@@ -8,12 +8,35 @@ namespace Adventure
         {
             Board board = new Board(60, 30);
 
+            Player player = new Player();
+            player.board = board;
+            player.StartingPosition();
+
+            Character[] characters = new Character[1];
+            characters[0] = new Skeleton();
+
+            foreach (var character in characters)
+            {
+                character.board = board;
+            }
+
+            while (true)
+            {
+                player.ReadInput();
+                foreach (var character in characters)
+                {
+                    character.DrawCharacter();
+                }
+                player.DrawCharacter();
+            }
+
             Console.ReadKey();
         }
     }
 
     public class Character
     {
+        Random random = new Random();
 
         int strength = 0;
         int health = 0;
@@ -21,18 +44,37 @@ namespace Adventure
         public string symbol = "%";
         public int xPosition = 5;
         public int yPosition = 10;
+        public Board board;
 
-        protected int [,] Move(int moveY, int moveX)
+        protected int[,] Move(int moveY, int moveX)
         {
-            xPosition += moveX;
-            yPosition += moveY;
+            if (board.isWall(xPosition + moveX, yPosition + moveY) != true)
+            {
+                xPosition += moveX;
+                yPosition += moveY;
+            }
             return new int[yPosition, xPosition];
         }
+
+        public void DrawCharacter()
+        {
+            Console.SetCursorPosition(xPosition, yPosition);
+            Console.Write(symbol);
+
+            Console.SetCursorPosition(xPosition, yPosition);
+            Console.Write("");
+        }
+
+        public void StartingPosition()
+        {
+            yPosition = random.Next(1, board.area.GetLength(0) - 1);
+            xPosition = random.Next(1, board.area.GetLength(1) - 1);
+        }
+
     }
 
     class Player : Character
     {
-
         public void ReadInput()
         {
             var input = Console.ReadKey(false).Key;
@@ -51,42 +93,55 @@ namespace Adventure
                     Move(0, 1);
                     return;
             }
+
+
+        }
+    }
+
+    class Skeleton : Character
+    {
+        public Skeleton()
+        {
+            symbol = "#";
         }
     }
 
     public class Board
     {
+        public Int32[,] area;
         public Board(Int32 x, Int32 y)
         {
-            Int32[,] area = new Int32[y, x];
-            Player[] characters = new Player[1];
-            characters[0] = new Player();
-            while (true)
-            {
-                characters[0].ReadInput();
-                Console.Clear();
+            area = new Int32[y, x];
 
-                for (int i = 0; i < area.GetLength(0); i++)
+            for (int i = 0; i < area.GetLength(0); i++)
+            {
+                for (int j = 0; j < area.GetLength(1); j++)
                 {
-                    for (int j = 0; j < area.GetLength(1); j++)
+                    if (i == 0 || j == 0 || i == area.GetLength(0) - 1 || j == area.GetLength(1) - 1)
                     {
-                        if (i == 0 || j == 0 || i == area.GetLength(0) - 1 || j == area.GetLength(1) - 1)
-                        {
-                            Console.Write("X");
-                        }
-                        else if (i == characters[0].yPosition && j == characters[0].xPosition)
-                        {
-                            Console.Write(characters[0].symbol);
-                        }
-                        else
-                        {
-                            Console.Write(" ");
-                        }
+                        Console.Write("X");
                     }
-                    Console.WriteLine("");
+                    else
+                    {
+                        Console.Write(" ");
+                    }
                 }
+                Console.WriteLine("");
             }
         }
+
+        public bool isWall(int xPos, int yPos)
+        {
+            if (yPos == 0 || xPos == 0 || yPos == area.GetLength(0) - 1 || xPos == area.GetLength(1) - 1)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
     }
 
     public class Border
