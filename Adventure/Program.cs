@@ -16,15 +16,40 @@ namespace Adventure
     public class Character
     {
 
-        int styrka = 0;
+        int strength = 0;
         int health = 0;
-        int tålamod = 0;
+        int accuracy = 0;
         public string symbol = "%";
         public int xPosition = 5;
-        public int yPosition = 5;
+        public int yPosition = 10;
 
+        protected int [,] Move(int moveY, int moveX)
+        {
+            xPosition += moveX;
+            yPosition += moveY;
+            return new int[xPosition, yPosition];
+        }
     }
 
+    class Player : Character
+    {
+
+        public Player()
+        {
+
+        }
+
+        void ReadInput()
+        {
+            var input = Console.ReadKey(false).Key;
+            switch (input)
+            {
+                case ConsoleKey.UpArrow:
+                    Move(1, 0);
+                    return;
+            }
+        }
+    }
 
     public class Board
     {
@@ -32,7 +57,9 @@ namespace Adventure
         {
             Int32[,] area = new Int32[y, x];
             Character[] characters = new Character[1];
-            
+            characters[0] = new Player();
+
+            characters[0].
 
             for (int i = 0; i < area.GetLength(0); i++)
             {
@@ -41,7 +68,8 @@ namespace Adventure
                     if (i == 0 || j == 0 || i == area.GetLength(0) - 1 || j == area.GetLength(1) - 1)
                     {
                         Console.Write("X");
-                    }else if(j==characters[0].yPosition && i==characters[0].xPosition)
+                    }
+                    else if (j == characters[0].yPosition && i == characters[0].xPosition)
                     {
                         Console.Write(characters[0].symbol);
                     }
