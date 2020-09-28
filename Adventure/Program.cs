@@ -6,20 +6,28 @@ namespace Adventure
     {
         static void Main(string[] args)
         {
-            Board board = new Board(60, 30);
+            //We should try to move as much as possible from the Main function if we can.
 
+            //First, we create a new board to play on.
+            //This will end up defining the edges based on the given size, and then draw it out.
+            Board board = new Board(80, 30);
+
+            //Next, we spawn the player and draw them on the screen.
             Player player = new Player();
             player.board = board;
-            player.StartingPosition();
+            player.RandomizePosition();
+            player.DrawCharacter();
 
+            //Next, we spawn enemies. Currently, we only spawn one on a fixed location.
             Character[] characters = new Character[1];
             characters[0] = new Skeleton();
-
             foreach (var character in characters)
             {
                 character.board = board;
+                character.DrawCharacter();
             }
 
+            //This here loops indefinitely. We read player input, then redraw all characters in the scene.
             while (true)
             {
                 player.ReadInput();
@@ -29,13 +37,12 @@ namespace Adventure
                 }
                 player.DrawCharacter();
             }
-
-            Console.ReadKey();
         }
     }
 
     public class Character
     {
+        //Base class for each creature in the game, including the player.
         Random random = new Random();
 
         int strength = 0;
@@ -48,6 +55,7 @@ namespace Adventure
 
         protected int[,] Move(int moveY, int moveX)
         {
+            //When we move, we need to ensure we are not moving into a wall. We check with the board.
             if (board.isWall(xPosition + moveX, yPosition + moveY) != true)
             {
                 xPosition += moveX;
@@ -58,6 +66,7 @@ namespace Adventure
 
         public void DrawCharacter()
         {
+            //This here is where we draw our character onto the screen.
             Console.SetCursorPosition(xPosition, yPosition);
             Console.Write(symbol);
 
@@ -65,10 +74,11 @@ namespace Adventure
             Console.Write("");
         }
 
-        public void StartingPosition()
+        public void RandomizePosition()
         {
-            yPosition = random.Next(1, board.area.GetLength(0) - 1);
-            xPosition = random.Next(1, board.area.GetLength(1) - 1);
+            //This randomizes our position.
+            xPosition = random.Next(1, board.boardWalls.GetLength(0) - 1);
+            yPosition = random.Next(1, board.boardWalls.GetLength(1) - 1);
         }
 
     }
@@ -77,6 +87,9 @@ namespace Adventure
     {
         public void ReadInput()
         {
+            //This here is where we end up after each button press.
+            //We read the user input,
+            //and if the input equals any of the arrow keys, we call the 'Move' function from the parent class.
             var input = Console.ReadKey(false).Key;
             switch (input)
             {
@@ -100,6 +113,7 @@ namespace Adventure
 
     class Skeleton : Character
     {
+        //This class inherits from the base Character class.
         public Skeleton()
         {
             symbol = "#";
@@ -108,89 +122,179 @@ namespace Adventure
 
     public class Board
     {
-        public Int32[,] area;
-        public Board(Int32 x, Int32 y)
+        //This class is in charge of knowing the layout of the level and the location of all the walls.
+        //It owns an instance of the Border class, which in turn is in charge of drawing the walls visually.
+        public bool[,] boardWalls;
+        Border boardEdges;
+        public Board(int x, int y)
         {
-            area = new Int32[y, x];
+            //Constructor script.
+            //The 'boardWalls' array below is an array of bools with the same dimensions as the area size.
+            //The bool value indicates whether or not the location is a wall.
+            boardWalls = new bool[x, y];
 
-            for (int i = 0; i < area.GetLength(0); i++)
+            for (int i = 0; i < boardWalls.GetLength(1); i++)
             {
-                for (int j = 0; j < area.GetLength(1); j++)
+                for (int j = 0; j < boardWalls.GetLength(0); j++)
                 {
-                    if (i == 0 || j == 0 || i == area.GetLength(0) - 1 || j == area.GetLength(1) - 1)
+                    if (i == 0 || j == 0 || i == boardWalls.GetLength(1) - 1 || j == boardWalls.GetLength(0) - 1)
                     {
-                        Console.Write("X");
+                        //This loop ends up here if we are at the edges of the map.
+                        //Every position out here is a wall, so we set the value at this position in the array to true.
+                        boardWalls[j, i] = true;
                     }
                     else
                     {
-                        Console.Write(" ");
+                        //If we end up here, this is not a wall.
+                        boardWalls[j, i] = false;
                     }
                 }
-                Console.WriteLine("");
             }
+            //Now that we have finished setting up the boardWalls position, we instantiate a new Border class with these values.
+            //Doing this will draw out the walls on the screen.
+            boardEdges = new Border(boardWalls);
         }
 
         public bool isWall(int xPos, int yPos)
         {
-            if (yPos == 0 || xPos == 0 || yPos == area.GetLength(0) - 1 || xPos == area.GetLength(1) - 1)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            //This is used by any moving object to see if they can move.
+            //It is called by the Character class.
+            return boardWalls[xPos, yPos];
         }
 
     }
 
     public class Border
     {
-        public static void Execute()
-        {
-            int topleft = 218;
-            int hline = 196;
-            int topright = 191;
-            int vline = 179;
-            int bottomleft = 192;
-            int bottomright = 217;
+        //This is a catch-all class that can be used as long as we need a border.
+        //I imagine this can be used for the board, but also for any menu system we want to use (like inventory)
 
-            Console.OutputEncoding = System.Text.Encoding.GetEncoding(28591);
-            //draw top left corner
-            Write(topleft);
-            //draw top horizontal line
-            for (int i = 0; i < 10; i++)
-                Write(hline);
-            //draw top right corner
-            Write(topright);
-            Console.WriteLine();
-            //draw left and right vertical lines
-            for (int i = 0; i < 6; i++)
+        bool[,] dimensions;
+
+        public Border(bool[,] walls)
+        {
+            dimensions = walls;
+            DrawBorder();
+        }
+
+        string CheckNeighbours(int positionX, int positionY)
+        {
+            //This function check tiles surrounding the wall, and dictates what kind of wall this is.
+            //This is only done so we can figure out what graphic to draw to represent the wall.
+            //The function takes in two integers for our X and Y position. This is compared to other positions in the dimensions array.
+
+            int surroundingWalls = 0;
+
+            //We set these values independently equal to the bool on that position in the array.
+            //We also check if we are on the edge of the array to avoid OutofBounds-errors.
+            bool above = (positionY <= 0)? false: dimensions[positionX, positionY - 1];    //Up
+            bool below = (positionY >= dimensions.GetLength(1) - 1)? false: dimensions[positionX, positionY + 1];    //Down
+            bool left = (positionX <= 0) ? false : dimensions[positionX - 1, positionY];    //Left
+            bool right = (positionX >= dimensions.GetLength(0) - 1) ? false : dimensions[positionX + 1, positionY];    //Right
+
+            //This here might not be the most elegant solution.
+            //I let each bool represent a digit in a base 2 binary number (1s and 0s only, true or false respectively)
+            //Each bool adds their value to the surroundingWalls integer declared above, and we get unique results for each situation.
+            if (above)
+                surroundingWalls += 8;
+            if (below)
+                surroundingWalls += 4;
+            if (left)
+                surroundingWalls += 2;
+            if (right)
+                surroundingWalls += 1;
+
+            //By adding the numbers above together,
+            //we can figure out what type of wall this is and convert it to a much more readable string format.
+            switch (surroundingWalls)
             {
-                Write(vline);
-                for (int k = 0; k < 10; k++)
-                {
-                    Console.Write(" ");
-                }
-                WriteLine(vline);
+                case 3:
+                    return "horizontal";
+                case 12:
+                    return "vertical";
+                case 5:
+                    return "upper left";
+                case 6:
+                    return "upper right";
+                case 9:
+                    return "lower left";
+                case 10:
+                    return "lower right";
+                case 13:
+                    return "middle left";
+                case 14:
+                    return "middle right";
+                case 7:
+                    return "middle top";
+                case 11:
+                    return "middle bottom";
+                case 15:
+                    return "middle";
+                default:
+                    return "???"; //This should never happen.
             }
-            //draw bottom left coner
-            Write(bottomleft);
-            //draw bottom horizontal line
-            for (int i = 0; i < 10; i++)
-                Write(hline);
-            //draw bottom right coner
-            Write(bottomright);
-            Console.ReadKey();
         }
-        static void Write(int charcode)
+
+        public int GetWallCode(string type)
         {
-            Console.Write((char)charcode);
+            //This switch case here takes our strings and converts it to ASCII character codes.
+            //Finding the proper codes was not very fun. I don't really understand them.
+            //By casting these numbers as char, it turns them into graphics in the console view.
+            //Example: Console.WriteLine((char)9552);
+
+            switch (type)
+            {
+                case "horizontal":
+                    return 9552;
+                case "vertical":
+                    return 9553;
+                case "upper left":
+                    return 9556;
+                case "upper right":
+                    return 9559;
+                case "lower left":
+                    return 9562;
+                case "lower right":
+                    return 9565;
+                case "middle left":
+                    return 9568;
+                case "middle right":
+                    return 9571;
+                case "middle top":
+                    return 9574;
+                case "middle bottom":
+                    return 9577;
+                case "middle":
+                    return 9580;
+                default:
+                    return 0;
+            }
         }
-        static void WriteLine(int charcode)
+
+        void DrawBorder()
         {
-            Console.WriteLine((char)charcode);
+            for (int i = 0; i < dimensions.GetLength(1); i++)
+            {
+                for (int j = 0; j < dimensions.GetLength(0); j++)
+                {
+                    //Nestled for loop in here to define the borders.
+                    if (dimensions[j, i])
+                    {
+                        //The line below does all the magic.
+                        //CheckNeighbours is sent directly into GetWallCode,
+                        //which in turn is sent directly into Console.Write,
+                        //ending up with a drawn wall.
+                        Console.Write((char)GetWallCode(CheckNeighbours(j, i)));
+                    }
+                    else
+                    {
+                        //There is no wall here, so we just draw an empty space.
+                        Console.Write(" ");
+                    }
+                }
+                //New line
+                Console.WriteLine();
+            }
         }
     }
-
 }
