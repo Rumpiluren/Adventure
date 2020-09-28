@@ -6,7 +6,6 @@ namespace Adventure
     {
         static void Main(string[] args)
         {
-
             Board board = new Board(60, 30);
 
             Console.ReadKey();
@@ -27,25 +26,29 @@ namespace Adventure
         {
             xPosition += moveX;
             yPosition += moveY;
-            return new int[xPosition, yPosition];
+            return new int[yPosition, xPosition];
         }
     }
 
     class Player : Character
     {
 
-        public Player()
-        {
-
-        }
-
-        void ReadInput()
+        public void ReadInput()
         {
             var input = Console.ReadKey(false).Key;
             switch (input)
             {
                 case ConsoleKey.UpArrow:
+                    Move(-1, 0);
+                    return;
+                case ConsoleKey.DownArrow:
                     Move(1, 0);
+                    return;
+                case ConsoleKey.LeftArrow:
+                    Move(0, -1);
+                    return;
+                case ConsoleKey.RightArrow:
+                    Move(0, 1);
                     return;
             }
         }
@@ -56,29 +59,32 @@ namespace Adventure
         public Board(Int32 x, Int32 y)
         {
             Int32[,] area = new Int32[y, x];
-            Character[] characters = new Character[1];
+            Player[] characters = new Player[1];
             characters[0] = new Player();
-
-            characters[0].
-
-            for (int i = 0; i < area.GetLength(0); i++)
+            while (true)
             {
-                for (int j = 0; j < area.GetLength(1); j++)
+                characters[0].ReadInput();
+                Console.Clear();
+
+                for (int i = 0; i < area.GetLength(0); i++)
                 {
-                    if (i == 0 || j == 0 || i == area.GetLength(0) - 1 || j == area.GetLength(1) - 1)
+                    for (int j = 0; j < area.GetLength(1); j++)
                     {
-                        Console.Write("X");
+                        if (i == 0 || j == 0 || i == area.GetLength(0) - 1 || j == area.GetLength(1) - 1)
+                        {
+                            Console.Write("X");
+                        }
+                        else if (i == characters[0].yPosition && j == characters[0].xPosition)
+                        {
+                            Console.Write(characters[0].symbol);
+                        }
+                        else
+                        {
+                            Console.Write(" ");
+                        }
                     }
-                    else if (j == characters[0].yPosition && i == characters[0].xPosition)
-                    {
-                        Console.Write(characters[0].symbol);
-                    }
-                    else
-                    {
-                        Console.Write(" ");
-                    }
+                    Console.WriteLine("");
                 }
-                Console.WriteLine("");
             }
         }
     }
