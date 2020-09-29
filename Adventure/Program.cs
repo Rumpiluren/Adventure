@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace Adventure
 {
@@ -85,6 +87,10 @@ namespace Adventure
 
     class Player : Character
     {
+        public Player()
+        {
+            symbol = ((char)233).ToString();
+        }
         public void ReadInput()
         {
             //This here is where we end up after each button press.
@@ -208,8 +214,12 @@ namespace Adventure
             //we can figure out what type of wall this is and convert it to a much more readable string format.
             switch (surroundingWalls)
             {
+                case 1:
+                case 2:
                 case 3:
                     return "horizontal";
+                case 4:
+                case 8:
                 case 12:
                     return "vertical";
                 case 5:
