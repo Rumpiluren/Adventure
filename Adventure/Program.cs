@@ -29,6 +29,11 @@ namespace Adventure
                 character.DrawCharacter();
             }
 
+            //Bootleg attempt to set window size. Not satisfied with how this works.
+            //Console.SetWindowSize(board.boardWalls.GetLength(0), board.boardWalls.GetLength(1));
+            //Console.BufferWidth = Console.WindowWidth + 1;
+            //Console.BufferHeight = Console.WindowHeight + 1;
+
             //This here loops indefinitely. We read player input, then redraw all characters in the scene.
             while (true)
             {
@@ -128,6 +133,7 @@ namespace Adventure
         //It owns an instance of the Border class, which in turn is in charge of drawing the walls visually.
         public bool[,] boardWalls;
         Border boardEdges;
+        Random rnd = new Random();
         public Board(int x, int y)
         {
             //Constructor script.
@@ -152,6 +158,7 @@ namespace Adventure
                     }
                 }
             }
+
             //Now that we have finished setting up the boardWalls position, we instantiate a new Border class with these values.
             //Doing this will draw out the walls on the screen.
             boardEdges = new Border(boardWalls);
@@ -162,6 +169,20 @@ namespace Adventure
             //This is used by any moving object to see if they can move.
             //It is called by the Character class.
             return boardWalls[xPos, yPos];
+        }
+
+        void RandomizeLayout()
+        {
+            //Unfinished
+            bool[,] room = boardWalls;
+
+            for (int i = 0; i < boardWalls.GetLength(0); i++)
+            {
+                for (int j = 0; j < boardWalls.GetLength(1); j++)
+                {
+                    boardWalls[i, j] = rnd.Next(2) == 0;
+                }
+            }
         }
 
     }
@@ -189,8 +210,8 @@ namespace Adventure
 
             //We set these values independently equal to the bool on that position in the array.
             //We also check if we are on the edge of the array to avoid OutofBounds-errors.
-            bool above = (positionY <= 0)? false: dimensions[positionX, positionY - 1];    //Up
-            bool below = (positionY >= dimensions.GetLength(1) - 1)? false: dimensions[positionX, positionY + 1];    //Down
+            bool above = (positionY <= 0) ? false : dimensions[positionX, positionY - 1];    //Up
+            bool below = (positionY >= dimensions.GetLength(1) - 1) ? false : dimensions[positionX, positionY + 1];    //Down
             bool left = (positionX <= 0) ? false : dimensions[positionX - 1, positionY];    //Left
             bool right = (positionX >= dimensions.GetLength(0) - 1) ? false : dimensions[positionX + 1, positionY];    //Right
 
@@ -210,32 +231,45 @@ namespace Adventure
             //we can figure out what type of wall this is and convert it to a much more readable string format.
             switch (surroundingWalls)
             {
+                case 0:
+                    return "█";
                 case 1:
                 case 2:
                 case 3:
-                    return "horizontal";
+                    //return "horizontal";
+                    return "═";
                 case 4:
                 case 8:
                 case 12:
-                    return "vertical";
+                    //return "vertical";
+                    return "║";
                 case 5:
-                    return "upper left";
+                    //return "upper left";
+                    return "╔";
                 case 6:
-                    return "upper right";
+                    //return "upper right";
+                    return "╗";
                 case 9:
-                    return "lower left";
+                    //return "lower left";
+                    return "╚";
                 case 10:
-                    return "lower right";
+                    //return "lower right";
+                    return "╝";
                 case 13:
-                    return "middle left";
+                    //return "middle left";
+                    return "╠";
                 case 14:
-                    return "middle right";
+                    //return "middle right";
+                    return "╣";
                 case 7:
-                    return "middle top";
+                    //return "middle top";
+                    return "╦";
                 case 11:
-                    return "middle bottom";
+                    //return "middle bottom";
+                    return "╩";
                 case 15:
-                    return "middle";
+                    //return "middle";
+                    return "╬";
                 default:
                     return "???"; //This should never happen.
             }
@@ -273,7 +307,7 @@ namespace Adventure
                 case "middle":
                     return 9580;
                 default:
-                    return 0;
+                    return 2610;
             }
         }
 
@@ -290,7 +324,7 @@ namespace Adventure
                         //CheckNeighbours is sent directly into GetWallCode,
                         //which in turn is sent directly into Console.Write,
                         //ending up with a drawn wall.
-                        Console.Write((char)GetWallCode(CheckNeighbours(j, i)));
+                        Console.Write(CheckNeighbours(j, i));
                     }
                     else
                     {
