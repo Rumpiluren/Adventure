@@ -87,10 +87,6 @@ namespace Adventure
 
     class Player : Character
     {
-        public Player()
-        {
-            symbol = ((char)233).ToString();
-        }
         public void ReadInput()
         {
             //This here is where we end up after each button press.
