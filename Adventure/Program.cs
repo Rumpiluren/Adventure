@@ -13,62 +13,47 @@ namespace Adventure
             //First, we create a new board to play on.
             //This will end up defining the edges based on the given size, and then draw it out.
             Board board = new Board(80, 30);
+            Player player = new Player();
+
+            board.SceneObjects = new List<GameObject>();
+            board.SceneObjects.Add(player);
+            board.SceneObjects.Add(new Item());
+            board.SceneObjects.Add(new Skeleton());
 
             //Next, we spawn the player and draw them on the screen.
-            Player player = new Player();
-            player.board = board;
-            player.RandomizePosition();
-            player.DrawCharacter();
 
             //Next, we spawn enemies. Currently, we only spawn one on a fixed location.
-            Character[] characters = new Character[1];
-            characters[0] = new Skeleton();
-            foreach (var character in characters)
+            foreach (var GameObject in board.SceneObjects)
             {
-                character.board = board;
-                character.DrawCharacter();
+                GameObject.board = board;
+                GameObject.RandomizePosition();
+                GameObject.DrawObject();
             }
 
             //This here loops indefinitely. We read player input, then redraw all characters in the scene.
             while (true)
             {
                 player.ReadInput();
-                foreach (var character in characters)
+                foreach (var GameObject in board.SceneObjects)
                 {
-                    character.DrawCharacter();
+                    GameObject.DrawObject();
                 }
-                player.DrawCharacter();
+                player.DrawObject();
             }
         }
     }
 
-    public class Character
+    public class GameObject
     {
-        //Base class for each creature in the game, including the player.
         Random random = new Random();
-
-        int strength = 0;
-        int health = 0;
-        int accuracy = 0;
-        public string symbol = "%";
-        public int xPosition = 5;
-        public int yPosition = 10;
+        public string name;
+        public string symbol = "!";
+        public int xPosition;
+        public int yPosition;
         public Board board;
 
-        protected int[,] Move(int moveY, int moveX)
+        public void DrawObject()
         {
-            //When we move, we need to ensure we are not moving into a wall. We check with the board.
-            if (board.isWall(xPosition + moveX, yPosition + moveY) != true)
-            {
-                xPosition += moveX;
-                yPosition += moveY;
-            }
-            return new int[yPosition, xPosition];
-        }
-
-        public void DrawCharacter()
-        {
-            //This here is where we draw our character onto the screen.
             Console.SetCursorPosition(xPosition, yPosition);
             Console.Write(symbol);
 
@@ -83,34 +68,135 @@ namespace Adventure
             yPosition = random.Next(1, board.boardWalls.GetLength(1) - 1);
         }
 
+        public virtual void Interact(Player player) { }
     }
 
-    class Player : Character
+    public class Character : GameObject
     {
+        //Base class for each creature in the game, including the player.
+        Random random = new Random();
+
+        public int strength = 0;
+        public int health = 0;
+        public int accuracy = 0;
+        //public new string symbol = "%";
+
+        public Character()
+        {
+            symbol = "%";
+        }
+
+        protected int[,] Move(int moveY, int moveX)
+        {
+            //When we move, we need to ensure we are not moving into a wall. We check with the board.
+            if (board.isWall(xPosition + moveX, yPosition + moveY) != true)
+            {
+                xPosition += moveX;
+                yPosition += moveY;
+            }
+            return new int[yPosition, xPosition];
+        }
+
+        public void Attack(Character opponent)
+        {
+            if (random.Next(1, 100) <= accuracy)
+            {
+                opponent.health -= strength;
+            }
+            if (opponent.health <= 0)
+            {
+                opponent.Death();
+            }
+        }
+
+        public void Death()
+        {
+            if (board.SceneObjects.Contains(this))
+            {
+                board.SceneObjects.Remove(this);
+            }
+        }
+
+    }
+
+    public class Player : Character
+    {
+        public Inventory bag = new Inventory();
+
+        public Player()
+        {
+            symbol = "@";
+            health = 10;
+            strength = 1;
+            accuracy = 75;
+        }
+
         public void ReadInput()
         {
             //This here is where we end up after each button press.
             //We read the user input,
             //and if the input equals any of the arrow keys, we call the 'Move' function from the parent class.
             var input = Console.ReadKey(false).Key;
-            switch (input)
+
+            if (IsInteracting(xPosition, yPosition))
             {
-                case ConsoleKey.UpArrow:
-                    Move(-1, 0);
-                    return;
-                case ConsoleKey.DownArrow:
-                    Move(1, 0);
-                    return;
-                case ConsoleKey.LeftArrow:
-                    Move(0, -1);
-                    return;
-                case ConsoleKey.RightArrow:
-                    Move(0, 1);
-                    return;
+
+            }
+            else
+            {
+                switch (input)
+                {
+                    case ConsoleKey.UpArrow:
+                        Move(-1, 0);
+                        break;
+                    case ConsoleKey.DownArrow:
+                        Move(1, 0);
+                        break;
+                    case ConsoleKey.LeftArrow:
+                        Move(0, -1);
+                        break;
+                    case ConsoleKey.RightArrow:
+                        Move(0, 1);
+                        break;
+                    case ConsoleKey.Escape:
+                        OpenInventory();
+                        break;
+                }
+            }
+        }
+
+        bool IsInteracting(int xPos, int yPos)
+        {
+            for (int i = 0; i < board.SceneObjects.Count; i++)
+            {
+                if (xPos == board.SceneObjects[i].xPosition && yPos == board.SceneObjects[i].yPosition && board.SceneObjects[i] != this)
+                {
+                    board.SceneObjects[i].Interact(this);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        void OpenInventory()
+        {
+            Console.Clear();
+
+            Console.WriteLine($"Health: {health}");
+
+            foreach (var Item in bag.Bag)
+            {
+                Console.WriteLine(Item.name);
             }
 
+            do
+            {
+            } while (Console.ReadKey(false).Key != ConsoleKey.Escape);
 
+            Console.Clear();
+            board.DrawScene();
         }
+
     }
 
     class Skeleton : Character
@@ -118,7 +204,17 @@ namespace Adventure
         public Skeleton()
         {
             symbol = "#";
+            health = 10;
+            strength = 1;
+            accuracy = 25;
         }
+
+        public override void Interact(Player player)
+        {
+            player.Attack(this);
+            Attack(player);
+        }
+
     }
 
     public class Board
@@ -128,7 +224,13 @@ namespace Adventure
         public bool[,] boardWalls;
         Border boardEdges;
         Random rnd = new Random();
-        
+        List<GameObject> sceneObjects;
+
+        public List<GameObject> SceneObjects {
+            get { return sceneObjects; }
+            set { sceneObjects = value; }
+        }
+
         public Board(int x, int y)
         {
             //Constructor script.
@@ -177,6 +279,17 @@ namespace Adventure
                 {
                     boardWalls[i, j] = rnd.Next(2) == 0;
                 }
+            }
+        }
+
+        public void DrawScene()
+        {
+            Console.SetCursorPosition(0, 0);
+            boardEdges.DrawBorder();
+
+            for (int i = 0; i < sceneObjects.Count; i++)
+            {
+                sceneObjects[i].DrawObject();
             }
         }
 
@@ -270,7 +383,7 @@ namespace Adventure
             }
         }
 
-        void DrawBorder()
+        public void DrawBorder()
         {
             for (int i = 0; i < dimensions.GetLength(1); i++)
             {
@@ -294,18 +407,33 @@ namespace Adventure
             }
         }
     }
-    public class Item
+    public class Item : GameObject
     {
-        public string symbol = "¤";
-        int x;
-        int y;
+        public Item()
+        {
+            symbol = "¤";
+            name = "Item";
+        }
+
+        public override void Interact(Player player)
+        {
+            if (board.SceneObjects.Contains(this))
+            {
+                board.SceneObjects.Remove(this);
+                player.bag.addItem(this);
+            }
+        }
     }
-    public class Equipment: Item{}
-    public class Consumable: Item{}
+    public class Equipment : Item { }
+    public class Consumable : Item { }
 
     public class Inventory
     {
-       List<Item> Bag = new List<Item>();
-       void addItem(Item newItem){Bag.Add(newItem);}
+        public List<Item> Bag = new List<Item>();
+        public void addItem(Item newItem)
+        {
+            Bag.Add(newItem);
+            Console.WriteLine($"Added: {newItem.name}");
+        }
     }
 }
