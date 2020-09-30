@@ -128,6 +128,7 @@ namespace Adventure
         public bool[,] boardWalls;
         Border boardEdges;
         Random rnd = new Random();
+        
         public Board(int x, int y)
         {
             //Constructor script.
@@ -292,5 +293,19 @@ namespace Adventure
                 Console.WriteLine();
             }
         }
+    }
+    public class Item
+    {
+        public string symbol = "¤";
+        int x;
+        int y;
+    }
+    public class Equipment: Item{}
+    public class Consumable: Item{}
+
+    public class Inventory
+    {
+       List<Item> Bag = new List<Item>();
+       void addItem(Item newItem){Bag.Add(newItem);}
     }
 }
