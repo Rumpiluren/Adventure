@@ -29,11 +29,6 @@ namespace Adventure
                 character.DrawCharacter();
             }
 
-            //Bootleg attempt to set window size. Not satisfied with how this works.
-            //Console.SetWindowSize(board.boardWalls.GetLength(0), board.boardWalls.GetLength(1));
-            //Console.BufferWidth = Console.WindowWidth + 1;
-            //Console.BufferHeight = Console.WindowHeight + 1;
-
             //This here loops indefinitely. We read player input, then redraw all characters in the scene.
             while (true)
             {
@@ -120,7 +115,6 @@ namespace Adventure
 
     class Skeleton : Character
     {
-        //This class inherits from the base Character class.
         public Skeleton()
         {
             symbol = "#";
@@ -228,7 +222,7 @@ namespace Adventure
                 surroundingWalls += 1;
 
             //By adding the numbers above together,
-            //we can figure out what type of wall this is and convert it to a much more readable string format.
+            //we can figure out what type of wall this is and convert it to a symbol.
             switch (surroundingWalls)
             {
                 case 0:
@@ -275,42 +269,6 @@ namespace Adventure
             }
         }
 
-        public int GetWallCode(string type)
-        {
-            //This switch case here takes our strings and converts it to ASCII character codes.
-            //Finding the proper codes was not very fun. I don't really understand them.
-            //By casting these numbers as char, it turns them into graphics in the console view.
-            //Example: Console.WriteLine((char)9552);
-
-            switch (type)
-            {
-                case "horizontal":
-                    return 9552;
-                case "vertical":
-                    return 9553;
-                case "upper left":
-                    return 9556;
-                case "upper right":
-                    return 9559;
-                case "lower left":
-                    return 9562;
-                case "lower right":
-                    return 9565;
-                case "middle left":
-                    return 9568;
-                case "middle right":
-                    return 9571;
-                case "middle top":
-                    return 9574;
-                case "middle bottom":
-                    return 9577;
-                case "middle":
-                    return 9580;
-                default:
-                    return 2610;
-            }
-        }
-
         void DrawBorder()
         {
             for (int i = 0; i < dimensions.GetLength(1); i++)
@@ -321,9 +279,7 @@ namespace Adventure
                     if (dimensions[j, i])
                     {
                         //The line below does all the magic.
-                        //CheckNeighbours is sent directly into GetWallCode,
-                        //which in turn is sent directly into Console.Write,
-                        //ending up with a drawn wall.
+                        //CheckNeighbours returns a symbol, which is sent directly into Console.Write.
                         Console.Write(CheckNeighbours(j, i));
                     }
                     else
