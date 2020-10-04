@@ -8,38 +8,9 @@ namespace Adventure
     {
         static void Main(string[] args)
         {
-            //We should try to move as much as possible from the Main function if we can.
+            GameManager gameManager = new GameManager();
 
-            //First, we create a new board to play on.
-            //This will end up defining the edges based on the given size, and then draw it out.
-            Board board = new Board(80, 30);
-            Player player = new Player();
 
-            board.SceneObjects = new List<GameObject>();
-            board.SceneObjects.Add(player);
-            board.SceneObjects.Add(new Consumable());
-            board.SceneObjects.Add(new Skeleton());
-
-            //Next, we spawn the player and draw them on the screen.
-
-            //Next, we spawn enemies. Currently, we only spawn one on a fixed location.
-            foreach (var GameObject in board.SceneObjects)
-            {
-                GameObject.board = board;
-                GameObject.RandomizePosition();
-                GameObject.DrawObject();
-            }
-
-            //This here loops indefinitely. We read player input, then redraw all characters in the scene.
-            while (true)
-            {
-                player.ReadInput();
-                foreach (var GameObject in board.SceneObjects)
-                {
-                    GameObject.DrawObject();
-                }
-                player.DrawObject();
-            }
         }
     }
 
@@ -50,10 +21,11 @@ namespace Adventure
         public string symbol = "!";
         public int xPosition;
         public int yPosition;
-        public Board board;
+        public GameManager gameManager;
 
         public void DrawObject()
         {
+            //Draw the object on screen. Can we tidy this up? Seems redundant to do the same thing twice.
             Console.SetCursorPosition(xPosition, yPosition);
             Console.Write(symbol);
 
@@ -63,15 +35,17 @@ namespace Adventure
 
         public void UndrawObject()
         {
-            symbol = " ";
-            DrawObject();
+            Console.SetCursorPosition(xPosition, yPosition);
+            Console.Write(" ");
+            //symbol = " ";
+            //DrawObject();
         }
 
         public void RandomizePosition()
         {
             //This randomizes our position.
-            xPosition = random.Next(1, board.boardWalls.GetLength(0) - 1);
-            yPosition = random.Next(1, board.boardWalls.GetLength(1) - 1);
+            xPosition = random.Next(1, gameManager.gameBoard.boardWalls.GetLength(0) - 1);
+            yPosition = random.Next(1, gameManager.gameBoard.boardWalls.GetLength(1) - 1);
         }
 
         public virtual void Interact(Player player) { }
@@ -95,7 +69,7 @@ namespace Adventure
         protected int[,] Move(int moveX, int moveY)
         {
             //When we move, we need to ensure we are not moving into a wall. We check with the board.
-            if (board.isWall(xPosition + moveX, yPosition + moveY) != true)
+            if (gameManager.gameBoard.isWall(xPosition + moveX, yPosition + moveY) != true)
             {
                 xPosition += moveX;
                 yPosition += moveY;
@@ -117,9 +91,9 @@ namespace Adventure
 
         public void Death()
         {
-            if (board.SceneObjects.Contains(this))
+            if (gameManager.SceneObjects.Contains(this))
             {
-                board.SceneObjects.Remove(this);
+                gameManager.SceneObjects.Remove(this);
                 UndrawObject();
             }
         }
@@ -172,22 +146,16 @@ namespace Adventure
 
         bool IsInteracting(int xPos, int yPos)
         {
-            for (int i = 0; i < board.SceneObjects.Count; i++)
+            for (int i = 0; i < gameManager.SceneObjects.Count; i++)
             {
-                if (xPos == board.SceneObjects[i].xPosition && yPos == board.SceneObjects[i].yPosition && board.SceneObjects[i] != this)
+                if (xPos == gameManager.SceneObjects[i].xPosition && yPos == gameManager.SceneObjects[i].yPosition && gameManager.SceneObjects[i] != this)
                 {
-                    board.SceneObjects[i].Interact(this);
+                    gameManager.SceneObjects[i].Interact(this);
                     return true;
                 }
             }
             return false;
         }
-
-        void OpenInventory()
-        {
-
-        }
-
     }
 
     class Skeleton : Character
@@ -208,6 +176,62 @@ namespace Adventure
 
     }
 
+    public class GameManager
+    {
+        //This class handles all logic in the game.
+
+        public Board gameBoard { get; private set; }
+        List<GameObject> sceneObjects;
+        Player player;
+
+        public List<GameObject> SceneObjects
+        {
+            get { return sceneObjects; }
+            set { sceneObjects = value; }
+        }
+
+        public GameManager()
+        {
+            //First, we create a new board to play on.
+            //This will end up defining the edges based on the given size, and then draw it out.
+            gameBoard = new Board(80, 30);
+            player = new Player();
+
+            SceneObjects = new List<GameObject>
+            {
+                new Consumable(),
+                new Skeleton(),
+                player
+            };
+
+            //Next, we spawn enemies. Currently, we only spawn one on a fixed location.
+            foreach (var GameObject in SceneObjects)
+            {
+                GameObject.gameManager = this;
+                GameObject.RandomizePosition();
+                GameObject.DrawObject();
+            }
+
+            //This here loops indefinitely. We read player input, then redraw all characters in the scene.
+            while (true)
+            {
+                player.ReadInput();
+                foreach (var GameObject in SceneObjects)
+                {
+                    GameObject.DrawObject();
+                }
+            }
+        }
+
+        public void DrawCharacters()
+        {
+            for (int i = 0; i < sceneObjects.Count; i++)
+            {
+                sceneObjects[i].DrawObject();
+            }
+        }
+    }
+
     public class Board
     {
         //This class is in charge of knowing the layout of the level and the location of all the walls.
@@ -217,7 +241,8 @@ namespace Adventure
         Random rnd = new Random();
         List<GameObject> sceneObjects;
 
-        public List<GameObject> SceneObjects {
+        public List<GameObject> SceneObjects
+        {
             get { return sceneObjects; }
             set { sceneObjects = value; }
         }
@@ -278,8 +303,6 @@ namespace Adventure
             Console.SetCursorPosition(0, 0);
             Console.Clear();
             boardEdges.DrawBorder();
-
-            DrawCharacters();
         }
 
         public void DrawCharacters()
@@ -415,9 +438,9 @@ namespace Adventure
 
         public override void Interact(Player player)
         {
-            if (board.SceneObjects.Contains(this))
+            if (gameManager.SceneObjects.Contains(this))
             {
-                board.SceneObjects.Remove(this);
+                gameManager.SceneObjects.Remove(this);
                 player.bag.addItem(this);
                 UndrawObject();
                 owner = player;
@@ -427,11 +450,11 @@ namespace Adventure
         public virtual void UseItem() { }
     }
     public class Equipment : Item { }
-    public class Consumable : Item 
+    public class Consumable : Item
     {
         public Consumable()
         {
-        symbol = "!";
+            symbol = "!";
         }
 
         public override void UseItem()
@@ -462,28 +485,31 @@ namespace Adventure
                 Console.WriteLine($"{i}: {Bag[i].name}");
             }
 
+            ConsoleKeyInfo input;
             do
             {
-
-                for (int i = 0; i < Bag.Count; i++)
+                int result;
+                input = Console.ReadKey(true);
+                if (int.TryParse(input.KeyChar.ToString(), out result))
                 {
-                    //PROBLEMATIQUE
-                    //Takes ANY input to mean success.
-                    //Fix.
-                    int result;
-                    var input = int.TryParse(Console.ReadKey(true).ToString(), out result);
-                    if (result == i)
+                    Console.WriteLine(result);
+                    for (int i = 0; i < Bag.Count; i++)
                     {
-                        Console.WriteLine($"Using {Bag[i].name}!");
-                        Bag[i].UseItem();
-                        break;
+                        //PROBLEMATIQUE
+                        //Takes ANY input to mean success.
+                        //Fix.
+                        if (result == i)
+                        {
+                            Console.WriteLine($"Using {Bag[i].name}!");
+                            Bag[i].UseItem();
+                            break;
+                        }
                     }
-                }
-
-            } while (Console.ReadKey(true).Key != ConsoleKey.Escape);
+                } else { Console.WriteLine(input); }
+            } while (input.Key != ConsoleKey.Escape);
 
             Console.Clear();
-            player.board.DrawScene();
+            player.gameManager.gameBoard.DrawScene();
         }
 
     }
