@@ -12,7 +12,7 @@ namespace Adventure
         }
     }
 
- 
+
 
     public class GameObject
     {
@@ -95,6 +95,7 @@ namespace Adventure
             {
                 gameManager.SceneObjects.Remove(this);
                 UndrawObject();
+                gameManager.infoBox.Write($"{name} just died!");
             }
         }
 
@@ -162,6 +163,7 @@ namespace Adventure
     {
         public Skeleton()
         {
+            name = "Skeleton";
             symbol = "#";
             health = 10;
             strength = 1;
@@ -171,13 +173,13 @@ namespace Adventure
         public override void Interact(Player player)
         {
             player.Attack(this);
-            Console.WriteLine($"You hit skeleton for {player.strength}! Skeleton has {health} hp left!");
+            //Console.WriteLine($"You hit skeleton for {player.strength}! Skeleton has {health} hp left!");
 
             Attack(player);
-            Console.WriteLine($"Skeleton hit you for {strength}! You have have {player.health} hp left!");
+            //Console.WriteLine($"Skeleton hit you for {strength}! You have have {player.health} hp left!");
 
-            gameManager.Combat();
-    }
+            gameManager.infoBox.Write($"You hit skeleton for {player.strength}! Skeleton has {health} hp left! Skeleton hit you for {strength}! You have have {player.health} hp left!");
+        }
 
     }
 
@@ -186,11 +188,11 @@ namespace Adventure
         //This class handles all logic in the game.
 
         public Board gameBoard { get; private set; }
+        public Menu infoBox;
         List<GameObject> sceneObjects;
         Player player;
 
-        public List<GameObject> SceneObjects
-        {
+        public List<GameObject> SceneObjects {
             get { return sceneObjects; }
             set { sceneObjects = value; }
         }
@@ -200,6 +202,7 @@ namespace Adventure
             //First, we create a new board to play on.
             //This will end up defining the edges based on the given size, and then draw it out.
             gameBoard = new Board(80, 30);
+            infoBox = new Menu(30, 30, 80, 0);
             player = new Player();
 
             SceneObjects = new List<GameObject>
@@ -230,30 +233,6 @@ namespace Adventure
             }
         }
 
-        public void Combat()
-        {
-            bool [,] boardWalls = new bool[30, 30];
-
-            for (int i = 0; i < boardWalls.GetLength(1); i++)
-            {
-                for (int j = 0; j < boardWalls.GetLength(0); j++)
-                {
-                    if (i == 0 || j == 0 || i == boardWalls.GetLength(1) - 1 || j == boardWalls.GetLength(0) - 1)
-                    {
-                     
-                        boardWalls[j, i] = true;
-                    }
-                    else
-                    {
-                        boardWalls[j, i] = false;
-                    }
-                }
-            }
-
-            Border CombatMenu = new Border(boardWalls, 80, 0);
-
-        }
-
         public void DrawCharacters()
         {
             for (int i = 0; i < sceneObjects.Count; i++)
@@ -268,6 +247,8 @@ namespace Adventure
         //Draw content within bounds.
         //Draw border around bounds
 
+        List<char> oldMessages;
+
         Border menuBorder;
         int sizeX;
         int sizeY;
@@ -278,11 +259,60 @@ namespace Adventure
         {
             sizeX = borderSizeX;
             sizeY = borderSizeY;
-            offsetX = borderSizeX;
-            offsetY = borderSizeY;
+            offsetX = borderOffsetX;
+            offsetY = borderOffsetY;
+            oldMessages = new List<char>();
 
-
+            menuBorder = new Border(sizeX, sizeY, offsetX, offsetY);
         }
+
+        public void Write(string text)
+        {
+
+            char[] newText = text.ToCharArray();
+
+            oldMessages.Insert(0, '£');
+            oldMessages.Insert(0, ' ');
+            oldMessages.InsertRange(0, text);
+
+            text = String.Join("", oldMessages.ToArray());
+
+            if (text.Length > (sizeX - 1) * (sizeY - 1))
+            {
+                text = text.Substring(0, (sizeX - 1) * (sizeY - 1));
+            }
+
+
+            if (text.Length > sizeX - 2)
+            {
+                string[] splitString = text.Split(new char[] {' '});
+
+                Console.SetCursorPosition(offsetX + 1, offsetY + 1);
+
+                for (int i = 0; i < splitString.Length; i++)
+                {
+                    if (splitString[i].Contains('£'))
+                    {
+                        splitString[i].Remove(0);
+                        Console.SetCursorPosition(offsetX + 1, Console.CursorTop + 2);
+                    }
+
+                    if (Console.CursorLeft + splitString[i].Length >= offsetX + sizeX)
+                    {
+                        Console.SetCursorPosition(offsetX + 1, Console.CursorTop + 1);
+                    }
+                    Console.Write(splitString[i] + " ");
+                }
+            }
+            else
+            {
+                Console.SetCursorPosition(offsetX + 1, offsetY + 1);
+                Console.Write(text);
+            }
+
+            Console.SetCursorPosition(offsetX + 1, offsetY + 1);
+        }
+
     }
     public class Board
     {
@@ -293,8 +323,7 @@ namespace Adventure
         Random rnd = new Random();
         List<GameObject> sceneObjects;
 
-        public List<GameObject> SceneObjects
-        {
+        public List<GameObject> SceneObjects {
             get { return sceneObjects; }
             set { sceneObjects = value; }
         }
@@ -384,12 +413,43 @@ namespace Adventure
             DrawBorder();
         }
 
+        public Border(int sizeX, int sizeY, int newOffsetX, int newOffsetY)
+        {
+            SquareWalls(sizeX, sizeY);
+            offsetX = newOffsetX;
+            offsetY = newOffsetY;
+            DrawBorder();
+        }
+
         public Border(bool[,] walls, int newOffsetX, int newOffsetY)
         {
             dimensions = walls;
             offsetX = newOffsetX;
             offsetY = newOffsetY;
             DrawBorder();
+        }
+
+        void SquareWalls(int x, int y)
+        {
+            dimensions = new bool[x, y];
+
+            for (int i = 0; i < dimensions.GetLength(1); i++)
+            {
+                for (int j = 0; j < dimensions.GetLength(0); j++)
+                {
+                    if (i == 0 || j == 0 || i == dimensions.GetLength(1) - 1 || j == dimensions.GetLength(0) - 1)
+                    {
+                        //This loop ends up here if we are at the edges of the map.
+                        //Every position out here is a wall, so we set the value at this position in the array to true.
+                        dimensions[j, i] = true;
+                    }
+                    else
+                    {
+                        //If we end up here, this is not a wall.
+                        dimensions[j, i] = false;
+                    }
+                }
+            }
         }
 
         string CheckNeighbours(int positionX, int positionY)
@@ -469,10 +529,10 @@ namespace Adventure
 
         public void DrawBorder()
         {
-            Console.SetCursorPosition(offsetX, offsetY);
-
             for (int i = 0; i < dimensions.GetLength(1); i++)
             {
+                Console.SetCursorPosition(offsetX, offsetY + i);
+
                 for (int j = 0; j < dimensions.GetLength(0); j++)
                 {
                     //Nestled for loop in here to define the borders.
@@ -488,8 +548,6 @@ namespace Adventure
                         Console.Write(" ");
                     }
                 }
-                //New line
-                Console.SetCursorPosition(offsetX, offsetY + i);
             }
         }
     }
@@ -510,6 +568,8 @@ namespace Adventure
                 player.bag.addItem(this);
                 UndrawObject();
                 owner = player;
+
+                gameManager.infoBox.Write($"Picked up {name}!");
             }
         }
 
@@ -536,7 +596,6 @@ namespace Adventure
         public void addItem(Item newItem)
         {
             Bag.Add(newItem);
-            //Console.WriteLine($"Added: {newItem.name}");
         }
 
         public void UseInventory(Player player)
@@ -571,7 +630,8 @@ namespace Adventure
                             break;
                         }
                     }
-                } else { Console.WriteLine(input); }
+                }
+                else { Console.WriteLine(input); }
             } while (input.Key != ConsoleKey.Escape);
 
             Console.Clear();
