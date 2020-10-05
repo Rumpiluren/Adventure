@@ -9,10 +9,10 @@ namespace Adventure
         static void Main(string[] args)
         {
             GameManager gameManager = new GameManager();
-
-
         }
     }
+
+ 
 
     public class GameObject
     {
@@ -171,8 +171,13 @@ namespace Adventure
         public override void Interact(Player player)
         {
             player.Attack(this);
+            Console.WriteLine($"You hit skeleton for {player.strength}! Skeleton has {health} hp left!");
+
             Attack(player);
-        }
+            Console.WriteLine($"Skeleton hit you for {strength}! You have have {player.health} hp left!");
+
+            gameManager.Combat();
+    }
 
     }
 
@@ -204,6 +209,8 @@ namespace Adventure
                 player
             };
 
+
+
             //Next, we spawn enemies. Currently, we only spawn one on a fixed location.
             foreach (var GameObject in SceneObjects)
             {
@@ -223,6 +230,30 @@ namespace Adventure
             }
         }
 
+        public void Combat()
+        {
+            bool [,] boardWalls = new bool[30, 30];
+
+            for (int i = 0; i < boardWalls.GetLength(1); i++)
+            {
+                for (int j = 0; j < boardWalls.GetLength(0); j++)
+                {
+                    if (i == 0 || j == 0 || i == boardWalls.GetLength(1) - 1 || j == boardWalls.GetLength(0) - 1)
+                    {
+                     
+                        boardWalls[j, i] = true;
+                    }
+                    else
+                    {
+                        boardWalls[j, i] = false;
+                    }
+                }
+            }
+
+            Border CombatMenu = new Border(boardWalls, 80, 0);
+
+        }
+
         public void DrawCharacters()
         {
             for (int i = 0; i < sceneObjects.Count; i++)
@@ -230,8 +261,14 @@ namespace Adventure
                 sceneObjects[i].DrawObject();
             }
         }
+
+
     }
 
+    public class Menu
+    {
+
+    }
     public class Board
     {
         //This class is in charge of knowing the layout of the level and the location of all the walls.
@@ -271,6 +308,7 @@ namespace Adventure
                     }
                 }
             }
+
 
             //Now that we have finished setting up the boardWalls position, we instantiate a new Border class with these values.
             //Doing this will draw out the walls on the screen.
@@ -320,11 +358,22 @@ namespace Adventure
         //This is a catch-all class that can be used as long as we need a border.
         //I imagine this can be used for the board, but also for any menu system we want to use (like inventory)
 
+
+        int offsetX = 0;
+        int offsetY = 0;
         bool[,] dimensions;
 
         public Border(bool[,] walls)
         {
             dimensions = walls;
+            DrawBorder();
+        }
+
+        public Border(bool[,] walls, int newOffsetX, int newOffsetY)
+        {
+            dimensions = walls;
+            offsetX = newOffsetX;
+            offsetY = newOffsetY;
             DrawBorder();
         }
 
@@ -405,6 +454,8 @@ namespace Adventure
 
         public void DrawBorder()
         {
+            Console.SetCursorPosition(offsetX, offsetY);
+
             for (int i = 0; i < dimensions.GetLength(1); i++)
             {
                 for (int j = 0; j < dimensions.GetLength(0); j++)
@@ -423,7 +474,7 @@ namespace Adventure
                     }
                 }
                 //New line
-                Console.WriteLine();
+                Console.SetCursorPosition(offsetX, offsetY + i);
             }
         }
     }
