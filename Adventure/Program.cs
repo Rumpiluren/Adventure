@@ -261,13 +261,28 @@ namespace Adventure
                 sceneObjects[i].DrawObject();
             }
         }
-
-
     }
 
     public class Menu
     {
+        //Draw content within bounds.
+        //Draw border around bounds
 
+        Border menuBorder;
+        int sizeX;
+        int sizeY;
+        int offsetX;
+        int offsetY;
+
+        public Menu(int borderSizeX, int borderSizeY, int borderOffsetX, int borderOffsetY)
+        {
+            sizeX = borderSizeX;
+            sizeY = borderSizeY;
+            offsetX = borderSizeX;
+            offsetY = borderSizeY;
+
+
+        }
     }
     public class Board
     {
