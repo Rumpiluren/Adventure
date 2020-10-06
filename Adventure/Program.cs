@@ -23,6 +23,8 @@ namespace Adventure
         public int yPosition;
         public GameManager gameManager;
 
+        public Stats stats;
+
         public void DrawObject()
         {
             //Draw the object on screen. Can we tidy this up? Seems redundant to do the same thing twice.
@@ -51,14 +53,10 @@ namespace Adventure
         public virtual void Interact(Player player) { }
     }
 
-    public class Character : GameObject
+    public abstract class Character : GameObject
     {
         //Base class for each creature in the game, including the player.
         Random random = new Random();
-
-        public int strength = 0;
-        public int health = 0;
-        public int accuracy = 0;
         //public new string symbol = "%";
 
         public Character()
@@ -79,19 +77,19 @@ namespace Adventure
 
         public void Attack(Character opponent)
         {
-            if (random.Next(1, 100) <= accuracy)
+            if (random.Next(1, 100) <= stats.Accuracy)
             {
-                opponent.health -= strength;
-                gameManager.infoBox.Write($"{name} hit {opponent.name} for {strength} damage!");
-                //gameManager.infoBox.Write($"You hit skeleton for {player.strength}! Skeleton has {health} hp left! Skeleton hit you for {strength}! You have have {player.health} hp left!");
+                opponent.stats.Add(new Stats(-stats.Strength, 0, 0));
+
+                gameManager.infoBox.Write($"{name} hit {opponent.name} for {stats.Strength} damage!");
             }
-            if (opponent.health <= 0)
+            if (opponent.stats.Health <= 0)
             {
                 opponent.Death();
             }
         }
 
-        public void Death()
+        public virtual void Death()
         {
             if (gameManager.SceneObjects.Contains(this))
             {
@@ -111,9 +109,7 @@ namespace Adventure
         {
             name = "Player";
             symbol = "@";
-            health = 10;
-            strength = 1;
-            accuracy = 75;
+            stats = new Stats(100, 10, 75);
             gameManager = newManager;
             playerInventory = new Inventory(gameManager);
         }
@@ -151,7 +147,7 @@ namespace Adventure
 
             gameManager.statusBox.Clear();
             gameManager.statusBox.Wipe();
-            gameManager.statusBox.Write($"HP: {health}\n Strength: {strength}\n Accuracy: {accuracy}");
+            gameManager.statusBox.Write($"HP: {stats.Health}\n Strength: {stats.Strength}\n Accuracy: {stats.Accuracy}");
         }
 
         bool IsInteracting(int xPos, int yPos)
@@ -166,24 +162,28 @@ namespace Adventure
             }
             return false;
         }
+
+        public override void Death()
+        {
+            base.Death();
+            Environment.Exit(0);
+        }
     }
 
-    class Skeleton : Character
+    class Enemy : Character
     {
-        public Skeleton()
+        public Enemy()
         {
             name = "Skeleton";
             symbol = "#";
-            health = 10;
-            strength = 1;
-            accuracy = 25;
+            stats = new Stats(100, 15, 100);
         }
 
         public override void Interact(Player player)
         {
             player.Attack(this);
 
-            if (health > 0) { Attack(player); }
+            if (stats.Health > 0) { Attack(player); }
 
         }
 
@@ -219,7 +219,7 @@ namespace Adventure
                 new Consumable(),
                 new Consumable(),
                 new Consumable(),
-                new Skeleton(),
+                new Enemy(),
                 player
             };
 
@@ -699,11 +699,13 @@ namespace Adventure
         public Consumable()
         {
             symbol = "!";
+            stats = new Stats(10, 0, 0);
         }
 
         public override void UseItem()
         {
-            owner.health += 5;
+            //owner.stats.Health += 5;
+            owner.stats.Add(stats);
             owner.playerInventory.Bag.Remove(this);
         }
     }
@@ -768,4 +770,29 @@ namespace Adventure
         }
 
     }
+
+    public struct Stats
+    {
+        public int Health;
+        public int Strength;
+        public int Accuracy;
+
+        public Stats(int newHealth, int newStrength, int newAccuracy)
+        {
+            Health = newHealth;
+            Strength = newStrength;
+            Accuracy = newAccuracy;
+        }
+
+        public Stats Add(Stats opponent)
+        {
+            Health += opponent.Health;
+            Strength += opponent.Strength;
+            Accuracy += opponent.Accuracy;
+
+            return this;
+        }
+
+    }
+
 }
