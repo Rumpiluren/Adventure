@@ -14,7 +14,7 @@ namespace Adventure
 
 
 
-    public class GameObject
+    public abstract class GameObject
     {
         Random random = new Random();
         public string name;
@@ -82,6 +82,8 @@ namespace Adventure
             if (random.Next(1, 100) <= accuracy)
             {
                 opponent.health -= strength;
+                gameManager.infoBox.Write($"{name} hit {opponent.name} for {strength} damage!");
+                //gameManager.infoBox.Write($"You hit skeleton for {player.strength}! Skeleton has {health} hp left! Skeleton hit you for {strength}! You have have {player.health} hp left!");
             }
             if (opponent.health <= 0)
             {
@@ -95,7 +97,7 @@ namespace Adventure
             {
                 gameManager.SceneObjects.Remove(this);
                 UndrawObject();
-                gameManager.infoBox.Write($"{name} just died!");
+                gameManager.infoBox.Write($"{name} died!");
             }
         }
 
@@ -103,14 +105,17 @@ namespace Adventure
 
     public class Player : Character
     {
-        public Inventory bag = new Inventory();
+        public Inventory playerInventory;
 
-        public Player()
+        public Player(GameManager newManager)
         {
+            name = "Player";
             symbol = "@";
             health = 10;
             strength = 1;
             accuracy = 75;
+            gameManager = newManager;
+            playerInventory = new Inventory(gameManager);
         }
 
         public void ReadInput()
@@ -135,7 +140,7 @@ namespace Adventure
                     inputDirection[0] = 1;
                     break;
                 case ConsoleKey.Escape:
-                    bag.UseInventory(this);
+                    playerInventory.UseInventory(this);
                     break;
             }
 
@@ -143,6 +148,10 @@ namespace Adventure
             {
                 Move(inputDirection[0], inputDirection[1]);
             }
+
+            gameManager.statusBox.Clear();
+            gameManager.statusBox.Wipe();
+            gameManager.statusBox.Write($"HP: {health}\n Strength: {strength}\n Accuracy: {accuracy}");
         }
 
         bool IsInteracting(int xPos, int yPos)
@@ -173,12 +182,9 @@ namespace Adventure
         public override void Interact(Player player)
         {
             player.Attack(this);
-            //Console.WriteLine($"You hit skeleton for {player.strength}! Skeleton has {health} hp left!");
 
-            Attack(player);
-            //Console.WriteLine($"Skeleton hit you for {strength}! You have have {player.health} hp left!");
+            if (health > 0) { Attack(player); }
 
-            gameManager.infoBox.Write($"You hit skeleton for {player.strength}! Skeleton has {health} hp left! Skeleton hit you for {strength}! You have have {player.health} hp left!");
         }
 
     }
@@ -189,6 +195,7 @@ namespace Adventure
 
         public Board gameBoard { get; private set; }
         public Menu infoBox;
+        public Menu statusBox;
         List<GameObject> sceneObjects;
         Player player;
 
@@ -201,12 +208,16 @@ namespace Adventure
         {
             //First, we create a new board to play on.
             //This will end up defining the edges based on the given size, and then draw it out.
+            Console.CursorVisible = false;
             gameBoard = new Board(80, 30);
-            infoBox = new Menu(30, 30, 80, 0);
-            player = new Player();
+            infoBox = new Menu(30, 20, 80, 0, "HISTORY", true);
+            statusBox = new Menu(30, 10, 80, infoBox.sizeY, "STATUS");
+            player = new Player(this);
 
             SceneObjects = new List<GameObject>
             {
+                new Consumable(),
+                new Consumable(),
                 new Consumable(),
                 new Skeleton(),
                 player
@@ -248,69 +259,98 @@ namespace Adventure
         //Draw border around bounds
 
         List<char> oldMessages;
+        string label;
+        bool spaceLines;
 
         Border menuBorder;
-        int sizeX;
-        int sizeY;
-        int offsetX;
-        int offsetY;
+        public int sizeX { get; internal set; }
+        public int sizeY { get; internal set; }
+        public int offsetX { get; internal set; }
+        public int offsetY { get; internal set; }
 
-        public Menu(int borderSizeX, int borderSizeY, int borderOffsetX, int borderOffsetY)
+        public Menu(int borderSizeX, int borderSizeY, int borderOffsetX, int borderOffsetY, string windowLabel = "", bool spaceOutLines = false)
         {
+            spaceLines = spaceOutLines;
+            label = windowLabel;
             sizeX = borderSizeX;
             sizeY = borderSizeY;
             offsetX = borderOffsetX;
             offsetY = borderOffsetY;
             oldMessages = new List<char>();
 
-            menuBorder = new Border(sizeX, sizeY, offsetX, offsetY);
+            menuBorder = new Border(sizeX, sizeY, offsetX, offsetY, label);
         }
 
-        public void Write(string text)
+        public void Write(string text = "", bool wipe = false)
         {
+            if (wipe) { Wipe(); }
 
-            char[] newText = text.ToCharArray();
-
-            oldMessages.Insert(0, '£');
-            oldMessages.Insert(0, ' ');
-            oldMessages.InsertRange(0, text);
-
-            text = String.Join("", oldMessages.ToArray());
-
-            if (text.Length > (sizeX - 1) * (sizeY - 1))
+            if (text.Length > 0)
             {
-                text = text.Substring(0, (sizeX - 1) * (sizeY - 1));
+                char[] newText = text.ToCharArray();
+
+                oldMessages.Insert(0, ' ');
+                oldMessages.Insert(0, '\n');
+                oldMessages.InsertRange(0, text);
             }
 
+            text = String.Join("", oldMessages.ToArray());
+            Clear();
 
-            if (text.Length > sizeX - 2)
+            string[] splitString = text.Split(new char[] { ' ' });
+
+            Console.SetCursorPosition(offsetX + 1, offsetY + 1);
+
+            for (int i = 0; i < splitString.Length; i++)
             {
-                string[] splitString = text.Split(new char[] {' '});
-
-                Console.SetCursorPosition(offsetX + 1, offsetY + 1);
-
-                for (int i = 0; i < splitString.Length; i++)
+                if (Console.CursorTop >= offsetY + sizeY - 2)
                 {
-                    if (splitString[i].Contains('£'))
-                    {
-                        splitString[i].Remove(0);
-                        Console.SetCursorPosition(offsetX + 1, Console.CursorTop + 2);
-                    }
+                    break;
+                }
 
-                    if (Console.CursorLeft + splitString[i].Length >= offsetX + sizeX)
-                    {
-                        Console.SetCursorPosition(offsetX + 1, Console.CursorTop + 1);
-                    }
+                if (Console.CursorLeft + splitString[i].Length >= offsetX + sizeX)
+                {
+                    Console.SetCursorPosition(offsetX + 1, Console.CursorTop + 1);
+                }
+
+                if (Console.CursorLeft < offsetX + 1)
+                {
+                    Console.SetCursorPosition(offsetX + 1, Console.CursorTop + ((spaceLines) ? 1 : 0));
+                }
+
+                if (splitString[i].Contains('\n'))
+                {
+                    Console.Write(splitString[i]);
+                }
+                else
+                {
                     Console.Write(splitString[i] + " ");
                 }
             }
-            else
-            {
-                Console.SetCursorPosition(offsetX + 1, offsetY + 1);
-                Console.Write(text);
-            }
 
-            Console.SetCursorPosition(offsetX + 1, offsetY + 1);
+        }
+
+        public void Redraw()
+        {
+            menuBorder.DrawBorder();
+            Write();
+        }
+
+        public void Wipe()
+        {
+            oldMessages = new List<char>();
+        }
+
+        public void Clear()
+        {
+            for (int i = 0; i < sizeY - 2; i++)
+            {
+                Console.SetCursorPosition(offsetX + 1, offsetY + 1 + i);
+                for (int j = 0; j < sizeX - 2; j++)
+                {
+                    Console.Write(" ");
+                }
+            }
         }
 
     }
@@ -352,11 +392,11 @@ namespace Adventure
                     }
                 }
             }
-
+            //RandomizeLayout(1);
 
             //Now that we have finished setting up the boardWalls position, we instantiate a new Border class with these values.
             //Doing this will draw out the walls on the screen.
-            boardEdges = new Border(boardWalls);
+            boardEdges = new Border(boardWalls, "DUNGEON");
         }
 
         public bool isWall(int xPos, int yPos)
@@ -366,18 +406,83 @@ namespace Adventure
             return boardWalls[xPos, yPos];
         }
 
-        void RandomizeLayout()
+        void RandomizeLayout(int numberOfRooms)
         {
             //Unfinished
             bool[,] room = boardWalls;
+            List<Room> rooms = new List<Room>();
 
-            for (int i = 0; i < boardWalls.GetLength(0); i++)
+            for (int i = 0; i < numberOfRooms; i++)
             {
-                for (int j = 0; j < boardWalls.GetLength(1); j++)
+                int roomHeight = rnd.Next(2, 7);
+                int roomWidth = rnd.Next(2, 7);
+                int roomX = 0;
+                int roomY = 0;
+                if (i != 0)
                 {
-                    boardWalls[i, j] = rnd.Next(2) == 0;
+                    int connectedRoom = rnd.Next(0, i - 1);
+                    roomX = rnd.Next(rooms[connectedRoom].positionX - (rooms[i].roomWidth / 2), rooms[connectedRoom].positionX + (rooms[connectedRoom].roomWidth / 2));
+                    roomY = rnd.Next(rooms[connectedRoom].positionY - (rooms[i].roomHeight / 2), rooms[connectedRoom].positionY + (rooms[connectedRoom].roomHeight / 2));
+                }
+                rooms.Add(new Room(roomX, roomY, roomWidth, roomHeight, this));
+            }
+
+            
+
+            //for (int i = 0; i < boardWalls.GetLength(0); i++)
+            //{
+            //    for (int j = 0; j < boardWalls.GetLength(1); j++)
+            //    {
+            //        boardWalls[i, j] = false;
+            //    }
+            //}
+
+            //for (int k = 0; k < numberOfRooms; k++)
+            //{
+            //    int roomHeight = rnd.Next(2, 7);
+            //    int roomWidth = rnd.Next(2, 7);
+            //    int roomX = rnd.Next((int)(boardWalls.GetLength(1)*0.25f) + roomWidth, (int)(boardWalls.GetLength(1) * 0.75f) - 1);
+            //    int roomY = rnd.Next((int)(boardWalls.GetLength(0) * 0.25f) + roomHeight, (int)(boardWalls.GetLength(0) * 0.75f) - 1);
+
+            //    rooms.Add(new Room(roomX, roomY));
+
+            //    for (int i = 0; i < boardWalls.GetLength(0); i++)
+            //    {
+            //        for (int j = 0; j < boardWalls.GetLength(1); j++)
+            //        {
+            //            if (Math.Abs(j - roomX) <= roomWidth && Math.Abs(i - roomY) <= roomHeight)
+            //            {
+            //                boardWalls[i, j] = true;
+            //            }
+            //        }
+            //    }
+            //}
+
+        }
+
+        public class Room
+        {
+            public int positionX;
+            public int positionY;
+            public int roomWidth;
+            public int roomHeight;
+            public Room(int posX, int posY, int newWidth, int newHeight, Board owner)
+            {
+                positionX = posX;
+                positionY = posY;
+                roomWidth = newWidth;
+                roomHeight = newHeight;
+
+                for (int i = positionX - (roomWidth / 2); i < positionX + (roomWidth + 2); i++)
+                {
+                    for (int j = positionY - (roomHeight / 2); j < positionY + (roomHeight + 2); j++)
+                    {
+                        owner.boardWalls[j, i] = true;
+                    }
                 }
             }
+
+
         }
 
         public void DrawScene()
@@ -402,27 +507,30 @@ namespace Adventure
         //This is a catch-all class that can be used as long as we need a border.
         //I imagine this can be used for the board, but also for any menu system we want to use (like inventory)
 
-
+        string title;
         int offsetX = 0;
         int offsetY = 0;
         bool[,] dimensions;
 
-        public Border(bool[,] walls)
+        public Border(bool[,] walls, string label = "")
         {
+            title = label;
             dimensions = walls;
             DrawBorder();
         }
 
-        public Border(int sizeX, int sizeY, int newOffsetX, int newOffsetY)
+        public Border(int sizeX, int sizeY, int newOffsetX, int newOffsetY, string label = "")
         {
+            title = label;
             SquareWalls(sizeX, sizeY);
             offsetX = newOffsetX;
             offsetY = newOffsetY;
             DrawBorder();
         }
 
-        public Border(bool[,] walls, int newOffsetX, int newOffsetY)
+        public Border(bool[,] walls, int newOffsetX, int newOffsetY, string label = "")
         {
+            title = label;
             dimensions = walls;
             offsetX = newOffsetX;
             offsetY = newOffsetY;
@@ -449,6 +557,15 @@ namespace Adventure
                         dimensions[j, i] = false;
                     }
                 }
+            }
+        }
+
+        void DrawLabel()
+        {
+            if (title.Length != 0)
+            {
+                Console.SetCursorPosition(((offsetX + (dimensions.GetLength(0) / 2)) - (title.Length / 2)), offsetY);
+                Console.Write(title);
             }
         }
 
@@ -549,6 +666,7 @@ namespace Adventure
                     }
                 }
             }
+            DrawLabel();
         }
     }
     public class Item : GameObject
@@ -565,7 +683,7 @@ namespace Adventure
             if (gameManager.SceneObjects.Contains(this))
             {
                 gameManager.SceneObjects.Remove(this);
-                player.bag.addItem(this);
+                player.playerInventory.addItem(this);
                 UndrawObject();
                 owner = player;
 
@@ -586,13 +704,21 @@ namespace Adventure
         public override void UseItem()
         {
             owner.health += 5;
-            owner.bag.Bag.Remove(this);
+            owner.playerInventory.Bag.Remove(this);
         }
     }
 
     public class Inventory
     {
         public List<Item> Bag = new List<Item>();
+        GameManager gameManager;
+        Menu menu;
+
+        public Inventory(GameManager newManager)
+        {
+            gameManager = newManager;
+        }
+
         public void addItem(Item newItem)
         {
             Bag.Add(newItem);
@@ -600,14 +726,19 @@ namespace Adventure
 
         public void UseInventory(Player player)
         {
-            Console.Clear();
+            menu = new Menu(gameManager.infoBox.sizeX, gameManager.infoBox.sizeY, gameManager.infoBox.offsetX, gameManager.infoBox.offsetY, "INVENTORY");
 
-            Console.WriteLine($"Health: {player.health}");
-            Console.WriteLine();
-
-            for (int i = 0; i < Bag.Count; i++)
+            if (Bag.Count > 0)
             {
-                Console.WriteLine($"{i}: {Bag[i].name}");
+                for (int i = 0; i < Bag.Count; i++)
+                {
+                    menu.Write($"{i}: {Bag[i].name}");
+                }
+                menu.Write("ITEMS:");
+            }
+            else
+            {
+                menu.Write("Your bag is empty!");
             }
 
             ConsoleKeyInfo input;
@@ -617,25 +748,23 @@ namespace Adventure
                 input = Console.ReadKey(true);
                 if (int.TryParse(input.KeyChar.ToString(), out result))
                 {
-                    Console.WriteLine(result);
                     for (int i = 0; i < Bag.Count; i++)
                     {
-                        //PROBLEMATIQUE
-                        //Takes ANY input to mean success.
-                        //Fix.
                         if (result == i)
                         {
-                            Console.WriteLine($"Using {Bag[i].name}!");
+                            menu.Clear();
+                            menu.Wipe();
+                            menu.Write($"Using {Bag[i].name}!");
                             Bag[i].UseItem();
                             break;
                         }
                     }
                 }
-                else { Console.WriteLine(input); }
+                else { break; }
             } while (input.Key != ConsoleKey.Escape);
 
-            Console.Clear();
-            player.gameManager.gameBoard.DrawScene();
+            menu.Clear();
+            player.gameManager.infoBox.Redraw();
         }
 
     }
