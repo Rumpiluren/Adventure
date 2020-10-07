@@ -160,5 +160,4 @@ namespace Adventure
             DrawLabel();
         }
     }
-
 }
